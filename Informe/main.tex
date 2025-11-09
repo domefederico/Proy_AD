@@ -1,0 +1,1272 @@
+\documentclass[12pt,a4paper]{article}
+
+% Paquetes necesarios
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+
+% Configuración de hyperref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=blue
+}
+
+% Definición de colores
+\definecolor{warning}{RGB}{231, 76, 60}
+\definecolor{success}{RGB}{46, 204, 113}
+
+\title{\textbf{Clasificación de Hongos: Análisis Predictivo para Seguridad Alimentaria} \\
+\large Proyecto Final - Análisis de Datos}
+
+\author{
+    Domenico Federico \\
+    Felipe Guasch \\
+    Joaquín Martirena
+}
+
+\date{Universidad de Monterrey \\ Noviembre 2024}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\newpage
+\tableofcontents
+\newpage
+
+% ============================================================================
+\section*{Resumen Ejecutivo}
+\addcontentsline{toc}{section}{Resumen Ejecutivo}
+% ============================================================================
+
+La intoxicación por consumo de hongos venenosos representa un problema crítico de salud pública a nivel mundial. Este proyecto desarrolla un modelo predictivo de machine learning para clasificar hongos como comestibles o venenosos basándose en características morfológicas observables.
+
+\subsection*{Dataset y Metodología}
+
+Se utilizó el \textit{UCI Secondary Mushroom Dataset} con 61,079 registros iniciales. Tras un exhaustivo proceso de limpieza de datos que incluyó eliminación de variables con más del 85\% de valores nulos, tratamiento de outliers extremos e imputación estratificada, se obtuvo un dataset final de 53,541 observaciones (87.66\% de retención) con 17 variables completamente sin valores faltantes.
+
+La metodología incluyó: (1) análisis exploratorio detallado, (2) preprocesamiento riguroso de datos, (3) análisis visual de patrones, (4) comparación de 6 algoritmos de clasificación (Logistic Regression, Decision Tree, Random Forest, Gradient Boosting, SVM, KNN), y (5) optimización de hiperparámetros mediante GridSearchCV con validación cruzada estratificada.
+
+\subsection*{Resultados Principales}
+
+El mejor modelo identificado fue \textbf{Random Forest optimizado} con los siguientes resultados en el conjunto de prueba:
+
+\begin{itemize}
+    \item \textbf{Accuracy:} 99.27\%
+    \item \textbf{Precision:} 99.94\%
+    \item \textbf{Recall (clase venenosa):} 98.83\% (métrica crítica)
+    \item \textbf{F1-Score:} 99.38\%
+    \item \textbf{AUC-ROC:} 0.9980
+\end{itemize}
+
+El modelo produjo 74 falsos negativos (1.17\% de hongos venenosos) y solo 4 falsos positivos (0.09\% de hongos comestibles). Las características más importantes fueron la textura del tallo (\textit{stem-surface}, 46.0\%), textura del sombrero (\textit{cap-surface}, 11.3\%) y dimensiones morfológicas.
+
+\subsection*{Conclusión}
+
+El modelo alcanza un rendimiento excelente con 99.27\% de precisión global y 98.83\% de recall para la clase crítica (venenosos). Sin embargo, la presencia de 74 falsos negativos requiere implementar medidas adicionales de seguridad antes de cualquier uso en aplicaciones reales de salud pública. Se recomienda validación obligatoria con expertos micólogos y sistema de doble verificación para casos de baja confianza.
+
+\newpage
+
+% ============================================================================
+\section{Descripción del Problema}
+% ============================================================================
+
+\subsection{Contexto de Salud Pública}
+
+La intoxicación por consumo de hongos venenosos representa un problema de salud pública significativo a nivel mundial. Cada año, miles de personas sufren envenenamiento por consumir hongos silvestres que confunden con especies comestibles. La identificación incorrecta de hongos puede tener consecuencias graves, incluyendo daño hepático, fallo renal e incluso la muerte.
+
+\subsection{Problemática Actual}
+
+\begin{itemize}
+    \item La identificación visual de hongos comestibles vs. venenosos requiere conocimiento especializado en micología
+    \item Muchas especies venenosas tienen características similares a especies comestibles, dificultando su distinción
+    \item Los recolectores aficionados carecen de herramientas confiables y accesibles para la clasificación segura
+    \item El error en la identificación puede tener consecuencias fatales
+\end{itemize}
+
+\subsection{Objetivo del Proyecto}
+
+Desarrollar un modelo predictivo basado en machine learning que pueda clasificar hongos como \textbf{comestibles (e)} o \textbf{venenosos (p)} utilizando sus características físicas observables. Este modelo busca proporcionar una herramienta de apoyo para la identificación segura de hongos, reduciendo el riesgo de intoxicaciones.
+
+\subsection{Relevancia}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Salud pública:} Prevención de intoxicaciones y reducción de casos de emergencia médica
+    \item \textbf{Educación:} Herramienta didáctica para micólogos y entusiastas de la micología
+    \item \textbf{Aplicación práctica:} Posible implementación en aplicaciones móviles de identificación
+    \item \textbf{Investigación:} Contribución al entendimiento de patrones morfológicos asociados con toxicidad
+\end{enumerate}
+
+\subsection{Consideraciones Críticas}
+
+\textcolor{warning}{\textbf{ADVERTENCIA IMPORTANTE:}} Este es un problema donde los tipos de error tienen consecuencias muy diferentes:
+
+\begin{itemize}
+    \item \textcolor{warning}{\textbf{Falso Negativo}} (clasificar hongo venenoso como comestible): \textbf{INACEPTABLE} - puede causar muerte
+    \item \textcolor{success}{\textbf{Falso Positivo}} (clasificar hongo comestible como venenoso): \textbf{ACEPTABLE} - solo causa rechazo innecesario
+\end{itemize}
+
+Por lo tanto, el modelo debe priorizar la métrica \textbf{Recall para la clase venenosa} sobre todas las demás métricas, buscando minimizar los falsos negativos a toda costa.
+
+\newpage
+
+% ============================================================================
+\section{Descripción del Conjunto de Datos}
+% ============================================================================
+
+\subsection{Origen y Características Generales}
+
+El dataset utilizado proviene del \textbf{UCI Machine Learning Repository} y está específicamente enfocado en la clasificación de hongos. Se utilizó el \textit{Secondary Mushroom Dataset}, que contiene datos expandidos generados a partir de un conjunto primario de 173 especies de hongos.
+
+\begin{table}[H]
+\centering
+\caption{Especificaciones del Dataset}
+\begin{tabular}{ll}
+\toprule
+\textbf{Característica} & \textbf{Valor} \\
+\midrule
+Nombre & Secondary Mushroom Dataset \\
+Fuente & UCI Machine Learning Repository \\
+Filas originales & 61,079 \\
+Filas después de limpieza & 53,541 (87.66\% retenido) \\
+Número de variables (original) & 21 \\
+Número de variables (limpio) & 17 \\
+Especies de hongos & 173 \\
+Muestras por especie & 353 (hipotéticas) \\
+Formato & CSV \\
+Delimitador (original) & coma (,) \\
+Delimitador (limpio) & punto y coma (;) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Variable Objetivo}
+
+\begin{table}[H]
+\centering
+\caption{Variable Objetivo - Clasificación}
+\begin{tabular}{lll}
+\toprule
+\textbf{Variable} & \textbf{Valores} & \textbf{Descripción} \\
+\midrule
+\texttt{class} & e & Edible (comestible) - seguro para consumo \\
+ & p & Poisonous (venenoso) - peligroso, tóxico \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Distribución de clases en dataset limpio:}
+\begin{itemize}
+    \item Comestibles (e): 22,002 (41.09\%)
+    \item Venenosos (p): 31,539 (58.91\%)
+    \item Ratio de balance: 1.43:1 (ligeramente desbalanceado)
+\end{itemize}
+
+\subsection{Variables Predictoras}
+
+El dataset contiene 16 variables predictoras divididas en dos categorías:
+
+\subsubsection{Variables Numéricas (3 variables)}
+
+\begin{table}[H]
+\centering
+\caption{Variables Numéricas Continuas}
+\begin{tabular}{llp{6cm}}
+\toprule
+\textbf{Variable} & \textbf{Unidad} & \textbf{Descripción} \\
+\midrule
+\texttt{cap-diameter} & cm & Diámetro del sombrero del hongo \\
+\texttt{stem-height} & cm & Altura del tallo del hongo \\
+\texttt{stem-width} & mm & Ancho del tallo del hongo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Variables Categóricas (13 variables)}
+
+\begin{longtable}{llp{7cm}}
+\caption{Variables Categóricas Nominales} \\
+\toprule
+\textbf{Variable} & \textbf{Categorías} & \textbf{Descripción} \\
+\midrule
+\endfirsthead
+
+\multicolumn{3}{c}{\textit{(Continuación de la tabla anterior)}} \\
+\toprule
+\textbf{Variable} & \textbf{Categorías} & \textbf{Descripción} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{3}{r}{\textit{Continúa en la siguiente página...}} \\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+\texttt{cap-shape} & 7 & Forma del sombrero (bell, conical, convex, flat, sunken, spherical, others) \\
+\texttt{cap-surface} & 10 & Textura de la superficie del sombrero (fibrous, grooves, scaly, smooth, shiny, etc.) \\
+\texttt{cap-color} & 12 & Color del sombrero (brown, buff, gray, green, pink, purple, red, white, yellow, blue, orange, black) \\
+\texttt{does-bruise-or-bleed} & 2 & Indica si el hongo se magulla o sangra al tocarlo (t/f) \\
+\texttt{gill-attachment} & 7 & Tipo de unión de las láminas al tallo (adnate, adnexed, decurrent, free, sinuate, pores, none) \\
+\texttt{gill-spacing} & 3 & Espaciado entre las láminas (close, distant, none) \\
+\texttt{gill-color} & 12 & Color de las láminas (mismos colores que cap-color) \\
+\texttt{stem-surface} & 8 & Textura de la superficie del tallo (similar a cap-surface) \\
+\texttt{stem-color} & 13 & Color del tallo (mismos colores que cap-color + none) \\
+\texttt{has-ring} & 2 & Indica si el hongo tiene anillo (t/f) \\
+\texttt{ring-type} & 8 & Tipo de anillo presente (cobwebby, evanescent, flaring, grooved, large, pendant, sheathing, zone) \\
+\texttt{habitat} & 8 & Hábitat donde crece el hongo (grasses, leaves, meadows, paths, heaths, urban, waste, woods) \\
+\texttt{season} & 4 & Estación del año (spring, summer, autumn, winter) \\
+\end{longtable}
+
+\subsection{Nota Importante sobre Codificación}
+
+\textbf{Todas las variables categóricas usan códigos de una sola letra} según la documentación oficial del UCI. Por ejemplo:
+\begin{itemize}
+    \item Colores: brown=n, buff=b, gray=g, green=r, pink=p, purple=u, red=e, white=w, yellow=y
+    \item Hábitat: grasses=g, leaves=l, meadows=m, paths=p, heaths=h, urban=u, waste=w, woods=d
+    \item Estaciones: spring=s, summer=u, autumn=a, winter=w
+\end{itemize}
+
+Consultar \texttt{secondary\_data\_meta.txt} para la codificación completa de todas las variables.
+
+\newpage
+
+% ============================================================================
+\section{Análisis Exploratorio}
+% ============================================================================
+
+El análisis exploratorio reveló importantes problemas de calidad de datos en el dataset original que requirieron tratamiento exhaustivo antes del modelado.
+
+\subsection{Problemas de Calidad Identificados}
+
+\subsubsection{Variables con Exceso de Valores Nulos}
+
+Se identificaron 4 variables con más del 85\% de valores nulos:
+
+\begin{table}[H]
+\centering
+\caption{Variables con Excesivos Valores Nulos}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Variable} & \textbf{Valores Nulos} & \textbf{Porcentaje} \\
+\midrule
+\texttt{veil-type} & 58,066 & 95.07\% \\
+\texttt{spore-print-color} & 55,050 & 90.13\% \\
+\texttt{veil-color} & 54,045 & 88.48\% \\
+\texttt{stem-root} & 52,044 & 85.21\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decisión:} Estas variables fueron \textcolor{warning}{\textbf{eliminadas}} del dataset, ya que imputar más del 85\% de los datos generaría información sintética que podría introducir patrones falsos en el modelo.
+
+\subsubsection{Valores Inválidos en Variables Numéricas}
+
+\begin{itemize}
+    \item \texttt{cap-diameter}: 611 filas (1.00\%) contenían el string \texttt{'invalid\_value'} en lugar de valores numéricos
+    \item \textbf{Decisión:} Conversión a numérico e imputación con la mediana por clase (comestible/venenoso)
+\end{itemize}
+
+\subsubsection{Códigos Categóricos No Documentados}
+
+Se encontraron valores que no aparecen en la metadata oficial:
+
+\begin{table}[H]
+\centering
+\caption{Códigos Categóricos Inesperados}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Variable} & \textbf{Código No Documentado} & \textbf{Filas Afectadas} \\
+\midrule
+\texttt{cap-surface} & 'd' & 4,234 (6.93\%) \\
+\texttt{stem-root} & 'f' & 1,013 (1.66\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decisión:} Eliminación de filas con estos códigos, ya que representan datos incorrectos o mal codificados que podrían comprometer la calidad del modelo.
+
+\subsubsection{Outliers Extremos Biológicamente Imposibles}
+
+\begin{table}[H]
+\centering
+\caption{Outliers Extremos Detectados}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Variable} & \textbf{Valor Máximo} & \textbf{Outliers (IQR×3)} & \textbf{Interpretación} \\
+\midrule
+\texttt{cap-diameter} & 623.40 cm & 995 & Hongo de 6 metros (imposible) \\
+\texttt{stem-height} & 339.20 cm & 1,569 & Tallo de 3.4 metros (imposible) \\
+\texttt{stem-width} & 1,039.10 mm & 1,094 & Tallo de 1 metro de grosor (imposible) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decisión:} Eliminación de outliers usando el método IQR × 3 (más conservador que el estándar 1.5), removiendo solo valores extremadamente atípicos y biológicamente imposibles.
+
+\subsubsection{Duplicados}
+
+Se identificaron 45 filas completamente duplicadas (0.07\% del dataset), las cuales fueron eliminadas para evitar data leakage en la validación del modelo.
+
+\subsection{Estadísticas Descriptivas}
+
+\subsubsection{Variables Numéricas (después de limpieza)}
+
+\begin{table}[H]
+\centering
+\caption{Estadísticas Descriptivas - Variables Numéricas}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Estadística} & \textbf{cap-diameter (cm)} & \textbf{stem-height (cm)} & \textbf{stem-width (mm)} \\
+\midrule
+Media & 6.20 & 6.31 & 11.30 \\
+Desv. Est. & 3.64 & 2.65 & 8.06 \\
+Mínimo & 0.38 & 0.00 & 0.00 \\
+25\% & 3.53 & 4.71 & 5.23 \\
+Mediana & 5.66 & 5.92 & 9.90 \\
+75\% & 8.18 & 7.55 & 15.76 \\
+Máximo & 23.16 & 17.53 & 51.93 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Diferencias Morfológicas entre Clases}
+
+Se realizaron pruebas t de Student para evaluar si existen diferencias significativas en las dimensiones morfológicas entre hongos comestibles y venenosos:
+
+\begin{table}[H]
+\centering
+\caption{Diferencias Morfológicas Significativas}
+\begin{tabular}{lrrp{3cm}}
+\toprule
+\textbf{Variable} & \textbf{Media Comestible} & \textbf{Media Venenoso} & \textbf{Significancia} \\
+\midrule
+\texttt{cap-diameter} & 6.85 cm & 5.75 cm & p < 0.001 (ALTA) \\
+\texttt{stem-height} & 6.46 cm & 6.20 cm & p < 0.001 (ALTA) \\
+\texttt{stem-width} & 12.71 mm & 10.32 mm & p < 0.001 (ALTA) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Conclusión:} Todas las variables numéricas muestran diferencias estadísticamente altamente significativas (p < 0.001) entre hongos comestibles y venenosos, indicando su potencial predictivo.
+
+\subsection{Distribución de la Variable Objetivo}
+
+El dataset limpio presenta un ligero desbalance de clases:
+
+\begin{itemize}
+    \item \textbf{Comestibles (e):} 22,002 (41.09\%)
+    \item \textbf{Venenosos (p):} 31,539 (58.91\%)
+    \item \textbf{Ratio:} 1.43:1
+\end{itemize}
+
+Este desbalance es manejable y no requiere técnicas de balanceo (SMOTE, undersampling) ya que el ratio es menor a 1.5:1. La estratificación en el train/test split asegura que ambos conjuntos mantengan esta proporción.
+
+\newpage
+
+% ============================================================================
+\section{Pretratamiento de Datos}
+% ============================================================================
+
+\subsection{Estrategia de Limpieza}
+
+El proceso de limpieza se diseñó en 8 pasos secuenciales, donde el orden es crítico ya que cada paso depende del anterior:
+
+\begin{table}[H]
+\centering
+\caption{Estrategia de Limpieza de Datos (8 Pasos)}
+\small
+\begin{tabular}{clp{5cm}l}
+\toprule
+\textbf{Paso} & \textbf{Acción} & \textbf{Justificación} & \textbf{Filas Afect.} \\
+\midrule
+1 & Eliminar duplicados iniciales & Evitar data leakage & 45 (0.07\%) \\
+2 & Eliminar variables >85\% nulos & Evitar datos sintéticos & 4 columnas \\
+3 & Imputar 'invalid\_value' & Solo 1\%, preservar info & 611 (1.00\%) \\
+4 & Eliminar códigos inesperados & Datos incorrectos & ~4,200 (6.93\%) \\
+5 & Eliminar outliers (IQR×3) & Biológicamente imposibles & ~3,222 (5.28\%) \\
+6 & Imputar nulos restantes & Preservar diferencias e/p & Variable \\
+7 & Eliminar filas muy incompletas & Casos irrecuperables & 0 (0\%) \\
+8 & Eliminar duplicados finales & Después de transformaciones & 38 (0.06\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Decisiones Críticas}
+
+\begin{table}[H]
+\centering
+\caption{Justificación de Decisiones de Limpieza}
+\small
+\begin{tabular}{p{4cm}p{3.5cm}p{6cm}}
+\toprule
+\textbf{Problema} & \textbf{Solución} & \textbf{Justificación} \\
+\midrule
+Variables >85\% nulos & ELIMINAR & Imputar >85\% genera más datos sintéticos que reales \\
+'invalid\_value' (1\%) & IMPUTAR mediana/clase & Solo 1\%, preserva información valiosa \\
+Códigos no documentados & ELIMINAR filas & Datos incorrectos peores que menos datos \\
+Outliers extremos & ELIMINAR (IQR×3) & Valores biológicamente imposibles \\
+Nulos restantes & IMPUTAR por clase & Preserva diferencias morfológicas e/p \\
+Duplicados & ELIMINAR & Previene data leakage en validación \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Imputación Estratificada por Clase}
+
+Para preservar las diferencias morfológicas naturales entre hongos comestibles y venenosos, la imputación de valores nulos se realizó \textbf{por clase}:
+
+\begin{itemize}
+    \item \textbf{Variables numéricas:} Mediana de la clase (e o p)
+    \item \textbf{Variables categóricas:} Moda de la clase (e o p)
+\end{itemize}
+
+Esta estrategia asegura que no se mezclen características de hongos comestibles y venenosos durante la imputación, manteniendo la integridad de los patrones morfológicos.
+
+\subsection{Resultados del Proceso de Limpieza}
+
+\begin{table}[H]
+\centering
+\caption{Comparación: Dataset Original vs. Limpio}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Métrica} & \textbf{Original} & \textbf{Limpio} & \textbf{Cambio} \\
+\midrule
+Filas & 61,079 & 53,541 & -7,538 (-12.34\%) \\
+Columnas & 21 & 17 & -4 \\
+Valores nulos & 356,255 & 0 & -356,255 \\
+Completitud & 72.23\% & 100.00\% & +27.77 pp \\
+Duplicados & 45 & 0 & -45 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Checklist de Validación}
+
+Se verificó que el dataset limpio cumpliera con todos los criterios de calidad:
+
+\begin{itemize}
+    \item[$\checkmark$] No contiene strings 'invalid\_value'
+    \item[$\checkmark$] \texttt{cap-diameter} es numérico (float64)
+    \item[$\checkmark$] Cero valores nulos (100\% completo)
+    \item[$\checkmark$] No contiene outliers >100 cm o >200 mm
+    \item[$\checkmark$] No contiene códigos categóricos no documentados
+    \item[$\checkmark$] No contiene duplicados
+    \item[$\checkmark$] Índice limpio (0 a 53,540)
+    \item[$\checkmark$] Retiene >50\% de datos originales (87.66\%)
+    \item[$\checkmark$] Balance de clases razonable (59\% p, 41\% e)
+\end{itemize}
+
+\subsection{Preprocesamiento para Modelado}
+
+\subsubsection{Encoding de Variables Categóricas}
+
+Se utilizó \textbf{Label Encoding} para transformar las 13 variables categóricas a valores numéricos. Esta técnica es apropiada para modelos basados en árboles (Random Forest, Gradient Boosting) que pueden manejar relaciones no ordinales.
+
+\begin{itemize}
+    \item Total de categorías codificadas: 13 variables
+    \item Rango de categorías únicas: 2 a 13 por variable
+    \item Variable objetivo: e=0 (comestible), p=1 (venenoso)
+\end{itemize}
+
+\subsubsection{Estandarización de Variables Numéricas}
+
+Las 3 variables numéricas fueron estandarizadas usando \texttt{StandardScaler} (media=0, desviación estándar=1):
+
+\begin{itemize}
+    \item \texttt{cap-diameter}: Estandarizado
+    \item \texttt{stem-height}: Estandarizado
+    \item \texttt{stem-width}: Estandarizado
+\end{itemize}
+
+La estandarización es crítica para algoritmos sensibles a la escala como SVM, KNN y Logistic Regression.
+
+\subsubsection{División Train/Test}
+
+Se realizó una división estratificada 80/20:
+
+\begin{table}[H]
+\centering
+\caption{División Train/Test}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Conjunto} & \textbf{Filas} & \textbf{Porcentaje} \\
+\midrule
+Train & 42,832 & 80.0\% \\
+Test & 10,709 & 20.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La \textbf{estratificación} asegura que ambos conjuntos mantengan la misma proporción de clases (58.9\% venenosos, 41.1\% comestibles), evitando sesgo en la evaluación.
+
+\newpage
+
+% ============================================================================
+\section{Análisis de Datos mediante Visualizaciones}
+% ============================================================================
+
+\subsection{Análisis de Correlaciones}
+
+Se calculó la matriz de correlación entre todas las variables (después de encoding numérico) para identificar relaciones lineales y posibles problemas de multicolinealidad.
+
+\subsubsection{Correlaciones con la Variable Objetivo}
+
+Las variables con mayor correlación (valor absoluto) con la clase del hongo fueron:
+
+\begin{table}[H]
+\centering
+\caption{Top 10 Variables Correlacionadas con Class (Poisonous)}
+\begin{tabular}{lrc}
+\toprule
+\textbf{Variable} & \textbf{Correlación} & \textbf{Interpretación} \\
+\midrule
+\texttt{stem-surface} & +0.265 & Positiva débil \\
+\texttt{cap-diameter} & -0.148 & Negativa débil \\
+\texttt{stem-width} & -0.146 & Negativa débil \\
+\texttt{stem-color} & -0.136 & Negativa débil \\
+\texttt{cap-shape} & -0.093 & Negativa débil \\
+\texttt{ring-type} & +0.088 & Positiva débil \\
+\texttt{gill-attachment} & -0.071 & Negativa débil \\
+\texttt{gill-color} & -0.065 & Negativa débil \\
+\texttt{gill-spacing} & -0.058 & Negativa débil \\
+\texttt{has-ring} & +0.056 & Positiva débil \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observación:} Ninguna variable individual muestra una correlación lineal fuerte (|r| > 0.5) con la variable objetivo, lo que sugiere que la clasificación depende de interacciones complejas entre múltiples variables.
+
+\subsubsection{Multicolinealidad}
+
+Se detectó un único par de variables con alta correlación (|r| > 0.7):
+
+\begin{itemize}
+    \item \texttt{cap-diameter} $\leftrightarrow$ \texttt{stem-width}: r = 0.747
+\end{itemize}
+
+Esta correlación es biológicamente razonable (hongos con sombreros más grandes tienden a tener tallos más anchos). Sin embargo, no representa un problema grave de multicolinealidad para modelos basados en árboles como Random Forest.
+
+\subsection{Patrones en Variables Categóricas}
+
+\subsubsection{Categorías Asociadas con Alta Toxicidad}
+
+Se identificaron categorías con más del 70\% de hongos venenosos:
+
+\begin{table}[H]
+\centering
+\caption{Categorías de Alto Riesgo (>70\% venenosos)}
+\small
+\begin{tabular}{llrr}
+\toprule
+\textbf{Variable} & \textbf{Categoría} & \textbf{\% Venenosos} & \textbf{n} \\
+\midrule
+\texttt{habitat} & p (paths) & 100.0\% & 338 \\
+\texttt{ring-type} & z (zone) & 100.0\% & 1,939 \\
+\texttt{cap-shape} & o (others) & 86.6\% & 2,776 \\
+\texttt{cap-shape} & b (bell) & 78.8\% & 5,084 \\
+\texttt{cap-color} & r (green) & 89.3\% & 1,584 \\
+\texttt{cap-color} & e (red) & 82.4\% & 3,054 \\
+\texttt{gill-color} & e (red) & 82.4\% & 871 \\
+\texttt{gill-color} & n (brown) & 71.7\% & 8,422 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Categorías Asociadas con Baja Toxicidad}
+
+Categorías con más del 70\% de hongos comestibles:
+
+\begin{table}[H]
+\centering
+\caption{Categorías de Bajo Riesgo (>70\% comestibles)}
+\begin{tabular}{llrr}
+\toprule
+\textbf{Variable} & \textbf{Categoría} & \textbf{\% Comestibles} & \textbf{n} \\
+\midrule
+\texttt{habitat} & w (waste) & 94.4\% & 324 \\
+\texttt{habitat} & u (urban) & 92.0\% & 50 \\
+\texttt{ring-type} & m (movable) & 100.0\% & 16 \\
+\texttt{cap-color} & b (buff) & 83.3\% & 914 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis por Hábitat y Estación}
+
+\subsubsection{Distribución por Hábitat}
+
+\begin{table}[H]
+\centering
+\caption{Distribución de Toxicidad por Hábitat}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Hábitat} & \textbf{Comestibles} & \textbf{Venenosos} & \textbf{\% Venenosos} \\
+\midrule
+p (paths) & 0 & 338 & 100.0\% \\
+g (grasses) & 2,028 & 4,775 & 70.2\% \\
+h (heaths) & 604 & 1,085 & 64.2\% \\
+m (meadows) & 944 & 1,371 & 59.2\% \\
+d (woods) & 16,434 & 22,865 & 58.2\% \\
+l (leaves) & 1,640 & 1,083 & 39.8\% \\
+u (urban) & 46 & 4 & 8.0\% \\
+w (waste) & 306 & 18 & 5.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Conclusión:} Los hábitats \textit{paths} (p) y \textit{grasses} (g) son los más peligrosos, mientras que \textit{urban} (u) y \textit{waste} (w) son los más seguros.
+
+\subsubsection{Distribución por Estación}
+
+\begin{table}[H]
+\centering
+\caption{Distribución de Toxicidad por Estación}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Estación} & \textbf{Comestibles} & \textbf{Venenosos} & \textbf{\% Venenosos} \\
+\midrule
+u (summer) & 7,242 & 11,666 & 61.7\% \\
+a (autumn) & 11,060 & 16,865 & 60.4\% \\
+s (spring) & 1,099 & 1,118 & 50.4\% \\
+w (winter) & 2,601 & 1,890 & 42.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Conclusión:} El verano (u) y otoño (a) son las estaciones más peligrosas, mientras que el invierno (w) presenta menor proporción de hongos venenosos.
+
+\subsection{Insights Principales del Análisis Visual}
+
+\begin{enumerate}
+    \item \textbf{Diferencias morfológicas significativas:} Los hongos comestibles son en promedio más grandes (diámetro de sombrero, ancho de tallo) que los venenosos
+
+    \item \textbf{Variables más discriminativas:} La textura del tallo (\texttt{stem-surface}) muestra la mayor correlación con toxicidad
+
+    \item \textbf{Factores ambientales:} El hábitat y la estación influyen significativamente en la probabilidad de toxicidad
+
+    \item \textbf{Combinaciones peligrosas:} Ciertas combinaciones hábitat-estación (ej: paths + autumn) son particularmente peligrosas (>70\% venenosos)
+
+    \item \textbf{Multicolinealidad limitada:} Solo se detectó una correlación fuerte entre \texttt{cap-diameter} y \texttt{stem-width}, que no compromete el modelado con árboles
+\end{enumerate}
+
+\newpage
+
+% ============================================================================
+\section{Construcción del Modelo Predictivo}
+% ============================================================================
+
+\subsection{Metodología de Comparación}
+
+Se implementó una metodología rigurosa para seleccionar el mejor algoritmo de clasificación:
+
+\begin{enumerate}
+    \item \textbf{Selección de algoritmos:} Se eligieron 6 algoritmos diversos que representan diferentes familias de aprendizaje automático
+
+    \item \textbf{Métrica principal:} \textbf{Recall para la clase venenosa (p)} fue definida como la métrica crítica, ya que minimizar falsos negativos es prioritario para salud pública
+
+    \item \textbf{Entrenamiento inicial:} Todos los modelos se entrenaron con hiperparámetros básicos razonables
+
+    \item \textbf{Evaluación comparativa:} Se evaluaron en el conjunto de prueba usando múltiples métricas
+
+    \item \textbf{Selección del mejor:} El modelo con mayor Recall para clase venenosa fue seleccionado
+
+    \item \textbf{Optimización:} El mejor modelo fue optimizado con GridSearchCV y validación cruzada estratificada
+\end{enumerate}
+
+\subsection{Algoritmos Evaluados}
+
+\begin{table}[H]
+\centering
+\caption{Algoritmos de Clasificación Evaluados}
+\small
+\begin{tabular}{lp{9cm}}
+\toprule
+\textbf{Algoritmo} & \textbf{Características} \\
+\midrule
+Logistic Regression & Modelo lineal, interpretable, baseline simple \\
+Decision Tree & No lineal, interpretable, propenso a overfitting \\
+Random Forest & Ensemble de árboles, robusto, reduce overfitting \\
+Gradient Boosting & Ensemble secuencial, alta precisión, sensible a ruido \\
+SVM & Kernel-based, efectivo en espacios de alta dimensión \\
+KNN & Basado en instancias, simple, sensible a escala \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Resultados de Comparación Inicial}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de Modelos - Métricas en Test Set}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Modelo} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Recall} & \textbf{F1} & \textbf{FN} & \textbf{FP} \\
+\midrule
+Random Forest & \textbf{0.9926} & \textbf{0.9994} & \textbf{0.9881} & \textbf{0.9938} & \textbf{75} & \textbf{4} \\
+Decision Tree & 0.9860 & 0.9943 & 0.9819 & 0.9881 & 114 & 36 \\
+Gradient Boosting & 0.9827 & 0.9863 & 0.9845 & 0.9854 & 98 & 87 \\
+SVM & 0.9686 & 0.9738 & 0.9835 & 0.9786 & 104 & 233 \\
+KNN & 0.9650 & 0.9787 & 0.9707 & 0.9747 & 185 & 190 \\
+Logistic Regression & 0.7026 & 0.7621 & 0.8069 & 0.7838 & 1218 & 1967 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretación de la tabla:}
+\begin{itemize}
+    \item \textbf{Acc. (Accuracy):} Precisión global del modelo
+    \item \textbf{Prec. (Precision):} Proporción de predicciones positivas correctas
+    \item \textbf{Recall:} Proporción de venenosos correctamente detectados (\textcolor{warning}{\textbf{CRÍTICO}})
+    \item \textbf{F1:} Media armónica entre Precision y Recall
+    \item \textbf{FN (Falsos Negativos):} Venenosos clasificados como comestibles (\textcolor{warning}{\textbf{INACEPTABLE}})
+    \item \textbf{FP (Falsos Positivos):} Comestibles clasificados como venenosos (Aceptable)
+\end{itemize}
+
+\subsection{Modelo Seleccionado: Random Forest}
+
+\textbf{Random Forest} fue seleccionado como el mejor modelo basándose en:
+
+\begin{enumerate}
+    \item \textbf{Recall más alto:} 98.81\% para clase venenosa
+    \item \textbf{Menor cantidad de falsos negativos:} Solo 75 casos
+    \item \textbf{Excelente balance:} Alta precisión (99.94\%) con solo 4 falsos positivos
+    \item \textbf{Robustez:} Ensemble de árboles reduce riesgo de overfitting
+    \item \textbf{Accuracy superior:} 99.26\% de precisión global
+\end{enumerate}
+
+\subsection{Optimización de Hiperparámetros}
+
+Se utilizó \textbf{GridSearchCV} con validación cruzada estratificada (5-fold) para optimizar el Random Forest:
+
+\subsubsection{Grid de Búsqueda}
+
+\begin{table}[H]
+\centering
+\caption{Grid de Hiperparámetros Explorado}
+\begin{tabular}{ll}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Valores Probados} \\
+\midrule
+\texttt{n\_estimators} & [100, 200, 300] \\
+\texttt{max\_depth} & [10, 15, 20, None] \\
+\texttt{min\_samples\_split} & [2, 5] \\
+\texttt{min\_samples\_leaf} & [1, 2] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Mejores Hiperparámetros}
+
+\begin{table}[H]
+\centering
+\caption{Hiperparámetros Optimizados}
+\begin{tabular}{ll}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Valor Óptimo} \\
+\midrule
+\texttt{n\_estimators} & 300 \\
+\texttt{max\_depth} & None (sin límite) \\
+\texttt{min\_samples\_split} & 2 \\
+\texttt{min\_samples\_leaf} & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Resultados de Validación Cruzada}
+
+\begin{table}[H]
+\centering
+\caption{Métricas en Validación Cruzada (5-fold)}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Métrica} & \textbf{Media} & \textbf{Desv. Est.} & \textbf{Rango} \\
+\midrule
+Accuracy & 0.9931 & $\pm$ 0.0006 & [0.9923, 0.9939] \\
+Precision & 0.9990 & $\pm$ 0.0003 & [0.9986, 0.9994] \\
+Recall & 0.9893 & $\pm$ 0.0009 & [0.9879, 0.9907] \\
+F1-Score & 0.9941 & $\pm$ 0.0005 & [0.9934, 0.9948] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La baja desviación estándar en todas las métricas indica que el modelo es \textbf{estable y robusto}, con desempeño consistente a través de diferentes particiones de los datos.
+
+\newpage
+
+% ============================================================================
+\section{Resultados Obtenidos}
+% ============================================================================
+
+\subsection{Métricas del Modelo Final}
+
+El modelo Random Forest optimizado alcanzó las siguientes métricas en el conjunto de prueba:
+
+\begin{table}[H]
+\centering
+\caption{Métricas Finales en Test Set (10,709 hongos)}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{Valor} & \textbf{Evaluación} \\
+\midrule
+Accuracy & 99.27\% & Excelente \\
+Precision (venenoso) & 99.94\% & Excelente \\
+Recall (venenoso) & \textbf{98.83\%} & \textcolor{warning}{\textbf{Bueno}} \\
+F1-Score & 99.38\% & Excelente \\
+AUC-ROC & 0.9980 & Excelente \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Matriz de Confusión}
+
+\begin{table}[H]
+\centering
+\caption{Matriz de Confusión - Modelo Final}
+\begin{tabular}{cc|cc|c}
+\toprule
+& & \multicolumn{2}{c|}{\textbf{Predicción}} & \\
+& & \textbf{Comestible} & \textbf{Venenoso} & \textbf{Total} \\
+\midrule
+\multirow{2}{*}{\rotatebox{90}{\textbf{Real}}} & \textbf{Comestible} & 4,397 & \textcolor{success}{4} & 4,401 \\
+& \textbf{Venenoso} & \textcolor{warning}{\textbf{74}} & 6,234 & 6,308 \\
+\midrule
+& \textbf{Total} & 4,471 & 6,238 & 10,709 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretación de la matriz:}
+
+\begin{itemize}
+    \item \textbf{True Negatives (TN) = 4,397:} Hongos comestibles correctamente clasificados (99.91\%)
+    \item \textcolor{success}{\textbf{False Positives (FP) = 4:}} Comestibles clasificados como venenosos (0.09\%) - ACEPTABLE
+    \item \textcolor{warning}{\textbf{False Negatives (FN) = 74:}} Venenosos clasificados como comestibles (1.17\%) - CRÍTICO
+    \item \textbf{True Positives (TP) = 6,234:} Hongos venenosos correctamente detectados (98.83\%)
+\end{itemize}
+
+\subsection{Análisis de Errores}
+
+\subsubsection{Falsos Negativos (Críticos)}
+
+De los 6,308 hongos venenosos en el test set:
+\begin{itemize}
+    \item \textcolor{success}{\textbf{6,234 fueron correctamente identificados}} (98.83\%)
+    \item \textcolor{warning}{\textbf{74 fueron erróneamente clasificados como comestibles}} (1.17\%)
+\end{itemize}
+
+\textbf{Tasa de Falsos Negativos:} 1.17\% (Aceptable para prototipo, pero requiere mejora para producción)
+
+\subsubsection{Falsos Positivos (Aceptables)}
+
+De los 4,401 hongos comestibles en el test set:
+\begin{itemize}
+    \item \textcolor{success}{\textbf{4,397 fueron correctamente identificados}} (99.91\%)
+    \item \textcolor{success}{\textbf{4 fueron erróneamente clasificados como venenosos}} (0.09\%)
+\end{itemize}
+
+\textbf{Tasa de Falsos Positivos:} 0.09\% (Excelente - desperdicio mínimo)
+
+\subsection{Classification Report Completo}
+
+\begin{table}[H]
+\centering
+\caption{Classification Report por Clase}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Clase} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support} \\
+\midrule
+Comestible (0) & 0.9834 & 0.9991 & 0.9912 & 4,401 \\
+Venenoso (1) & 0.9994 & 0.9883 & 0.9938 & 6,308 \\
+\midrule
+\textbf{Accuracy} & & & 0.9927 & 10,709 \\
+\textbf{Macro avg} & 0.9914 & 0.9937 & 0.9925 & 10,709 \\
+\textbf{Weighted avg} & 0.9928 & 0.9927 & 0.9927 & 10,709 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Feature Importance}
+
+Las 10 características más importantes para la clasificación fueron:
+
+\begin{table}[H]
+\centering
+\caption{Top 10 Features Más Importantes}
+\begin{tabular}{clr}
+\toprule
+\textbf{Rank} & \textbf{Variable} & \textbf{Importancia} \\
+\midrule
+1 & \texttt{stem-surface} & 46.0\% \\
+2 & \texttt{cap-surface} & 11.3\% \\
+3 & \texttt{stem-width} & 7.9\% \\
+4 & \texttt{stem-height} & 5.5\% \\
+5 & \texttt{cap-diameter} & 4.7\% \\
+6 & \texttt{ring-type} & 4.1\% \\
+7 & \texttt{gill-spacing} & 3.8\% \\
+8 & \texttt{habitat} & 3.6\% \\
+9 & \texttt{gill-attachment} & 2.9\% \\
+10 & \texttt{cap-color} & 2.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observación clave:} La textura del tallo (\texttt{stem-surface}) es por lejos la característica más importante, representando el 46\% de la capacidad predictiva del modelo. Esto sugiere que la textura del tallo es un indicador muy fuerte de toxicidad.
+
+\subsection{Curvas de Evaluación}
+
+\subsubsection{Curva ROC (Receiver Operating Characteristic)}
+
+\begin{itemize}
+    \item \textbf{AUC-ROC = 0.9980} (Excelente capacidad discriminativa)
+    \item Un valor de 1.0 indica separación perfecta entre clases
+    \item El modelo está muy cerca de la perfección (0.9980 $\approx$ 1.0)
+\end{itemize}
+
+\subsubsection{Curva Precision-Recall}
+
+La curva Precision-Recall muestra el trade-off entre precision y recall a diferentes thresholds de clasificación. El modelo mantiene alta precision (>99\%) mientras logra alto recall (>98\%), indicando excelente balance.
+
+\subsection{Evaluación de Viabilidad para Salud Pública}
+
+\begin{table}[H]
+\centering
+\caption{Criterios de Viabilidad}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Criterio} & \textbf{Objetivo} & \textbf{Resultado} \\
+\midrule
+Recall venenoso $\geq$ 95\% & 95\% & \textcolor{success}{98.83\% $\checkmark$} \\
+Recall venenoso $\geq$ 99\% & 99\% & \textcolor{warning}{98.83\% $\times$} \\
+Falsos Negativos = 0 & 0 & \textcolor{warning}{74 $\times$} \\
+Falsos Negativos $\leq$ 10 & 10 & \textcolor{warning}{74 $\times$} \\
+Accuracy $\geq$ 95\% & 95\% & \textcolor{success}{99.27\% $\checkmark$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Recomendación Final}
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{DECISIÓN:} Modelo \textcolor{warning}{\textbf{RECOMENDADO}} con precauciones adicionales
+
+\textbf{NIVEL DE CONFIANZA:} \textcolor{warning}{\textbf{AMARILLO}}
+
+\textbf{JUSTIFICACIÓN:}
+\begin{itemize}
+    \item [$\checkmark$] Recall > 95\% para clase venenosa (98.83\%)
+    \item [$\times$] Recall < 99\% (objetivo ideal para salud pública)
+    \item [\textcolor{warning}{!}] 74 falsos negativos presentes (riesgo de muerte)
+\end{itemize}
+}}
+\end{center}
+
+\textbf{Uso recomendado:}
+\begin{itemize}
+    \item Implementar sistema de doble verificación para casos dudosos
+    \item Usar threshold ajustado (0.3-0.4) para reducir falsos negativos
+    \item Validación obligatoria con expertos micólogos antes de uso en producción
+    \item \textbf{NO usar como única herramienta de clasificación en campo}
+    \item Implementar sistema de confianza/certeza para advertir al usuario
+\end{itemize}
+
+\newpage
+
+% ============================================================================
+\section{Conclusiones}
+% ============================================================================
+
+\subsection{Logros del Proyecto}
+
+\begin{enumerate}
+    \item \textbf{Modelo de alta precisión:} Se desarrolló exitosamente un modelo Random Forest optimizado con 99.27\% de accuracy y 98.83\% de recall para la detección de hongos venenosos.
+
+    \item \textbf{Limpieza exhaustiva de datos:} Se transformó un dataset con graves problemas de calidad (27.77\% de valores nulos, outliers extremos, duplicados) en un dataset 100\% completo y validado, reteniendo 87.66\% de los datos originales.
+
+    \item \textbf{Identificación de características clave:} Se determinó que la textura del tallo (\texttt{stem-surface}) es el predictor más importante (46\%), seguido de la textura del sombrero y dimensiones morfológicas.
+
+    \item \textbf{Metodología rigurosa:} Comparación sistemática de 6 algoritmos, optimización de hiperparámetros con GridSearchCV, y validación cruzada estratificada aseguran la robustez del modelo.
+
+    \item \textbf{Análisis integral:} Análisis exploratorio detallado, visualizaciones comprehensivas, y análisis de correlaciones proporcionan entendimiento profundo de los datos.
+\end{enumerate}
+
+\subsection{Viabilidad del Modelo}
+
+El modelo alcanza un nivel \textcolor{warning}{\textbf{AMARILLO}} de confianza para uso en salud pública:
+
+\textbf{Fortalezas:}
+\begin{itemize}
+    \item Recall > 98\% detecta la gran mayoría de hongos venenosos
+    \item Precision > 99\% minimiza desperdicio de hongos comestibles
+    \item AUC-ROC de 0.998 indica excelente capacidad discriminativa
+    \item Modelo estable y robusto (validación cruzada consistente)
+\end{itemize}
+
+\textbf{Limitaciones:}
+\begin{itemize}
+    \item 74 falsos negativos (1.17\%) representan riesgo de muerte
+    \item Recall no alcanza el ideal de 99\% para salud pública crítica
+    \item Dataset basado en muestras hipotéticas, no recolecciones reales
+    \item No validado con expertos micólogos
+\end{itemize}
+
+\subsection{Limitaciones Identificadas}
+
+\begin{enumerate}
+    \item \textbf{Naturaleza del dataset:} El \textit{Secondary Mushroom Dataset} contiene muestras hipotéticas generadas a partir de 173 especies reales. La generalización a especies no incluidas o variabilidad natural no está garantizada.
+
+    \item \textbf{Falsos negativos:} Los 74 casos de hongos venenosos clasificados como comestibles son inaceptables desde una perspectiva de salud pública estricta.
+
+    \item \textbf{Contexto geográfico:} El dataset no especifica distribución geográfica, lo que limita su aplicabilidad a regiones específicas.
+
+    \item \textbf{Características limitadas:} Solo considera 16 características morfológicas observables. Características microscópicas (esporas) u químicas (toxinas) no están incluidas.
+
+    \item \textbf{Falta de validación externa:} No se validó con un conjunto de datos independiente de especies reales.
+\end{enumerate}
+
+\subsection{Recomendaciones de Uso}
+
+\subsubsection{SÍ usar el modelo para:}
+
+\begin{itemize}
+    \item[$\checkmark$] Investigación académica y educación en micología
+    \item[$\checkmark$] Desarrollo de prototipos y pruebas de concepto
+    \item[$\checkmark$] Herramienta de apoyo (segunda opinión) junto con expertos
+    \item[$\checkmark$] Análisis de patrones morfológicos asociados con toxicidad
+    \item[$\checkmark$] Sistema de alerta temprana (con validación posterior)
+\end{itemize}
+
+\subsubsection{NO usar el modelo para:}
+
+\begin{itemize}
+    \item[$\times$] Clasificación directa en campo sin validación experta
+    \item[$\times$] Decisiones de consumo sin consulta con micólogos profesionales
+    \item[$\times$] Aplicaciones de producción sin mitigación de riesgos adicionales
+    \item[$\times$] Educación sobre identificación de hongos salvajes como única fuente
+    \item[$\times$] Reemplazo de conocimiento experto en micología
+\end{itemize}
+
+\subsection{Trabajo Futuro}
+
+\subsubsection{Mejoras del Modelo}
+
+\begin{enumerate}
+    \item \textbf{Reducción de falsos negativos:}
+    \begin{itemize}
+        \item Ajustar threshold de clasificación (usar 0.3-0.4 en lugar de 0.5)
+        \item Explorar técnicas de ensemble más avanzadas (stacking, blending)
+        \item Implementar cost-sensitive learning (penalizar más FN que FP)
+    \end{itemize}
+
+    \item \textbf{Validación con datos reales:}
+    \begin{itemize}
+        \item Obtener dataset de recolecciones reales en campo
+        \item Validación cruzada con expertos micólogos
+        \item Pruebas con especies no incluidas en el entrenamiento
+    \end{itemize}
+
+    \item \textbf{Incorporación de características adicionales:}
+    \begin{itemize}
+        \item Análisis microscópico de esporas
+        \item Pruebas químicas (olor, cambio de color al corte)
+        \item Información geográfica y temporal
+    \end{itemize}
+
+    \item \textbf{Sistema de confianza:}
+    \begin{itemize}
+        \item Implementar scores de confianza para cada predicción
+        \item Identificar automáticamente casos dudosos
+        \item Sistema de alerta para predicciones de baja confianza
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Desarrollo de Aplicación}
+
+\begin{enumerate}
+    \item Interfaz de usuario amigable para recolectores
+    \item Sistema de captura de imágenes con mediciones automáticas
+    \item Integración con bases de datos de especies por región
+    \item Sistema de reportes para retroalimentación de expertos
+    \item Módulo educativo con información sobre especies comunes
+\end{enumerate}
+
+\subsection{Conclusión Final}
+
+Este proyecto demuestra la viabilidad de utilizar machine learning para asistir en la clasificación de hongos comestibles vs. venenosos, alcanzando una precisión de 99.27\% y detectando 98.83\% de hongos venenosos. Sin embargo, la presencia de falsos negativos subraya la necesidad de precauciones adicionales antes de cualquier uso en aplicaciones reales de salud pública.
+
+El modelo desarrollado representa un \textbf{prototipo sólido} con potencial para convertirse en una herramienta de apoyo valiosa, siempre que se implemente con las salvaguardas apropiadas y se valide exhaustivamente con expertos micólogos y datos de campo reales.
+
+\textcolor{warning}{\textbf{ADVERTENCIA FINAL:}} Este modelo NO debe ser usado como única fuente de información para decisiones de consumo de hongos silvestres. La consulta con expertos micólogos profesionales es OBLIGATORIA antes de consumir cualquier hongo recolectado.
+
+\newpage
+
+% ============================================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+% ============================================================================
+
+\begin{enumerate}[label={[\arabic*]}]
+    \item UCI Machine Learning Repository. \textit{Secondary Mushroom Dataset}. Disponible en: \url{https://archive.ics.uci.edu/ml/datasets/Secondary+Mushroom+Dataset}
+
+    \item Pedregosa, F., et al. (2011). \textit{Scikit-learn: Machine Learning in Python}. Journal of Machine Learning Research, 12, 2825-2830.
+
+    \item McKinney, W. (2010). \textit{Data Structures for Statistical Computing in Python}. Proceedings of the 9th Python in Science Conference, 56-61.
+
+    \item Breiman, L. (2001). \textit{Random Forests}. Machine Learning, 45(1), 5-32.
+
+    \item Hunter, J. D. (2007). \textit{Matplotlib: A 2D Graphics Environment}. Computing in Science \& Engineering, 9(3), 90-95.
+
+    \item Waskom, M. (2021). \textit{seaborn: statistical data visualization}. Journal of Open Source Software, 6(60), 3021.
+\end{enumerate}
+
+\newpage
+
+% ============================================================================
+\section*{Apéndice A: Código Fuente}
+\addcontentsline{toc}{section}{Apéndice A: Código Fuente}
+% ============================================================================
+
+El código completo del proyecto está disponible en los siguientes notebooks Jupyter:
+
+\begin{enumerate}
+    \item \texttt{AnalisisExploratorio.ipynb} - Análisis exploratorio de datos y detección de problemas de calidad
+
+    \item \texttt{Limpieza\_Datos.ipynb} - Proceso completo de limpieza de datos en 8 pasos
+
+    \item \texttt{Analisis\_Visualizaciones.ipynb} - Visualizaciones comprehensivas y análisis de patrones
+
+    \item \texttt{Modelo\_Predictivo.ipynb} - Construcción, optimización y evaluación del modelo predictivo
+\end{enumerate}
+
+\textbf{Repositorio:} El proyecto completo, incluyendo datos limpios y documentación, está disponible en el directorio del proyecto.
+
+\textbf{Requisitos de software:}
+\begin{itemize}
+    \item Python 3.8+
+    \item pandas, numpy, matplotlib, seaborn
+    \item scikit-learn 1.0+
+    \item scipy
+    \item jupyter notebook
+\end{itemize}
+
+\textbf{Instrucciones de ejecución:}
+\begin{verbatim}
+# Instalar dependencias
+pip install pandas numpy matplotlib seaborn scikit-learn scipy jupyter
+
+# Iniciar Jupyter Notebook
+jupyter notebook
+
+# Ejecutar notebooks en orden:
+# 1. AnalisisExploratorio.ipynb
+# 2. Limpieza_Datos.ipynb
+# 3. Analisis_Visualizaciones.ipynb
+# 4. Modelo_Predictivo.ipynb
+\end{verbatim}
+
+\newpage
+
+% ============================================================================
+\section*{Apéndice B: Tabla de Codificación de Variables}
+\addcontentsline{toc}{section}{Apéndice B: Tabla de Codificación de Variables}
+% ============================================================================
+
+\subsection*{Colores}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Código} & \textbf{Color} \\
+\midrule
+n & brown (marrón) \\
+b & buff (beige) \\
+g & gray (gris) \\
+r & green (verde) \\
+p & pink (rosa) \\
+u & purple (púrpura) \\
+e & red (rojo) \\
+w & white (blanco) \\
+y & yellow (amarillo) \\
+l & blue (azul) \\
+o & orange (naranja) \\
+k & black (negro) \\
+f & none (ninguno) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{Formas del Sombrero (cap-shape)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Código} & \textbf{Forma} \\
+\midrule
+b & bell (campana) \\
+c & conical (cónico) \\
+x & convex (convexo) \\
+f & flat (plano) \\
+s & sunken (hundido) \\
+p & spherical (esférico) \\
+o & others (otros) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{Hábitat}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Código} & \textbf{Hábitat} \\
+\midrule
+g & grasses (pastos) \\
+l & leaves (hojas) \\
+m & meadows (praderas) \\
+p & paths (caminos) \\
+h & heaths (brezales) \\
+u & urban (urbano) \\
+w & waste (desechos) \\
+d & woods (bosques) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{Estaciones (season)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Código} & \textbf{Estación} \\
+\midrule
+s & spring (primavera) \\
+u & summer (verano) \\
+a & autumn (otoño) \\
+w & winter (invierno) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
